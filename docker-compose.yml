@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  stable-diffusion-api:
+    build: .
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./models_cache:/root/.cache/huggingface
+
