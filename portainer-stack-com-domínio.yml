@@ -8,12 +8,26 @@ services:
       dockerfile: Dockerfile
     container_name: stable-diffusion-api
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - CUDA_VISIBLE_DEVICES=""
       - API_KEY=${API_KEY}
+      - CUDA_VISIBLE_DEVICES=""
     volumes:
       - models_cache:/root/.cache/huggingface
+    restart: unless-stopped
+    networks:
+      - api-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx_config:/etc/nginx/conf.d:ro
+    depends_on:
+      - stable-diffusion-api
     restart: unless-stopped
     networks:
       - api-network
@@ -21,6 +35,12 @@ services:
 volumes:
   models_cache:
     driver: local
+  nginx_config:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /path/to/nginx.conf  # Ajuste o caminho no Portainer
 
 networks:
   api-network:

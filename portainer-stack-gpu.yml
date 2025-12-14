@@ -17,8 +17,8 @@ services:
               count: 1
               capabilities: [gpu]
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
       - API_KEY=${API_KEY}
+      - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - models_cache:/root/.cache/huggingface
     restart: unless-stopped

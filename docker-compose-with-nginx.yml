@@ -3,6 +3,7 @@ version: '3.8'
 services:
   stable-diffusion-api:
     build: .
+    image: stable-diffusion-api:latest
     container_name: stable-diffusion-api
     ports:
       - "127.0.0.1:8000:8000"  # Apenas localhost, Nginx vai expor externamente

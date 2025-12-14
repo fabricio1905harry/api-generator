@@ -3,6 +3,7 @@ version: '3.8'
 services:
   stable-diffusion-api:
     build: .
+    image: stable-diffusion-api:latest
     ports:
       - "8000:8000"
     deploy:
