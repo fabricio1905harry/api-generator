@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3'
 
 # Versão para CPU (sem GPU)
 # Use: docker-compose -f docker-compose.cpu.yml up -d

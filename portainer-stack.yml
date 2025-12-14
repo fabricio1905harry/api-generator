@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3'
 
 services:
   stable-diffusion-api:
@@ -7,15 +7,9 @@ services:
       context: https://github.com/fabricio1905harry/api-generator.git
       dockerfile: Dockerfile
     container_name: stable-diffusion-api
+    runtime: nvidia
     ports:
       - "8000:8000"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - API_KEY=${API_KEY}
