@@ -37,6 +37,45 @@ git push -u origin main
 git remote add origin https://seu-token@github.com/seu-usuario/nome-do-repo.git
 ```
 
+## 🚀 Deploy na VPS
+
+**Guia completo passo a passo:** **[DEPLOY_VPS.md](DEPLOY_VPS.md)**
+
+### Resumo Rápido:
+
+1. **Conecte na VPS:**
+```bash
+ssh usuario@seu-ip-vps
+```
+
+2. **Instale Docker e Docker Compose:**
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+newgrp docker
+```
+
+3. **Clone e configure:**
+```bash
+git clone https://github.com/fabricio1905harry/api-generator.git
+cd api-generator
+echo "API_KEY=sua-chave-secreta" > .env
+```
+
+4. **Deploy:**
+```bash
+# Sem domínio (apenas IP)
+docker-compose up -d --build
+
+# Com domínio (recomendado)
+# 1. Configure DNS apontando para IP da VPS
+# 2. Edite nginx.conf com seu domínio
+docker-compose -f docker-compose-with-nginx.yml up -d --build
+```
+
 ## 🌐 Configurar Domínio
 
 Para acessar a API via domínio (ex: `https://api.seudominio.com`), consulte o guia completo em **[CONFIGURAR_DOMINIO.md](CONFIGURAR_DOMINIO.md)**
