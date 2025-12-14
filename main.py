@@ -1,131 +1,122 @@
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import Response
-from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
-import torch
-from PIL import Image
-import io
 import os
 
-app = FastAPI(title="Stable Diffusion API")
+from fastapi import FastAPI, UploadFile, File, Form, Depends, HTTPException, Security
 
-# Verificar se CUDA está disponível
+from fastapi.security.api_key import APIKeyHeader
+
+from fastapi.responses import Response
+
+from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
+
+import torch
+
+from io import BytesIO
+
+from PIL import Image
+
+
+
+app = FastAPI(title="API Nano Banana (Secure)")
+
+
+
+# --- CONFIGURAÇÃO DE SEGURANÇA ---
+
+API_KEY_NAME = "x-api-key"
+
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+
+
+# Pega a senha das variáveis de ambiente do Docker
+
+SERVER_API_KEY = os.getenv("API_KEY")
+
+
+
+async def get_api_key(api_key_header: str = Security(api_key_header)):
+
+    if api_key_header == SERVER_API_KEY:
+
+        return api_key_header
+
+    else:
+
+        raise HTTPException(status_code=403, detail="Acesso negado: API Key inválida")
+
+
+
+# --- CARREGAMENTO DO MODELO ---
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"Usando dispositivo: {device}")
 
-# Carregar modelo txt2img
-print("Carregando modelo Stable Diffusion v1.5...")
-txt2img_pipeline = StableDiffusionPipeline.from_pretrained(
-    "runwayml/stable-diffusion-v1-5",
-    torch_dtype=torch.float16 if device == "cuda" else torch.float32
-)
-txt2img_pipeline = txt2img_pipeline.to(device)
+# Usando float16 para economizar VRAM
 
-# Carregar modelo img2img
-img2img_pipeline = StableDiffusionImg2ImgPipeline.from_pretrained(
-    "runwayml/stable-diffusion-v1-5",
-    torch_dtype=torch.float16 if device == "cuda" else torch.float32
-)
-img2img_pipeline = img2img_pipeline.to(device)
+pipe_txt = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5", torch_dtype=torch.float16 if device=="cuda" else torch.float32)
 
-print("Modelos carregados com sucesso!")
+pipe_txt.to(device)
+
+
+
+pipe_img = StableDiffusionImg2ImgPipeline(
+
+    vae=pipe_txt.vae,
+
+    text_encoder=pipe_txt.text_encoder,
+
+    tokenizer=pipe_txt.tokenizer,
+
+    unet=pipe_txt.unet,
+
+    scheduler=pipe_txt.scheduler,
+
+    safety_checker=pipe_txt.safety_checker,
+
+    feature_extractor=pipe_txt.feature_extractor,
+
+).to(device)
+
 
 
 @app.get("/")
-async def root():
-    return {
-        "message": "Stable Diffusion API",
-        "device": device,
-        "endpoints": ["/txt2img", "/img2img"]
-    }
+
+def health_check():
+
+    return {"status": "online", "auth": "enabled"}
 
 
-@app.post("/txt2img")
-async def text_to_image(prompt: str = Form(...)):
-    """
-    Gera uma imagem a partir de um prompt de texto.
-    
-    Args:
-        prompt: Texto descritivo da imagem desejada
-    
-    Returns:
-        Imagem PNG gerada
-    """
-    try:
-        print(f"Gerando imagem para o prompt: {prompt}")
-        
-        # Gerar imagem
-        image = txt2img_pipeline(
-            prompt=prompt,
-            num_inference_steps=50,
-            guidance_scale=7.5
-        ).images[0]
-        
-        # Converter para PNG em bytes
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        
-        return Response(
-            content=img_byte_arr.getvalue(),
-            media_type="image/png"
-        )
-    except Exception as e:
-        return {"error": str(e)}
+
+# --- ROTAS PROTEGIDAS (Adicionamos dependencies=[Depends(get_api_key)]) ---
 
 
-@app.post("/img2img")
-async def image_to_image(
-    prompt: str = Form(...),
-    image: UploadFile = File(...),
-    strength: float = Form(0.75)
-):
-    """
-    Edita uma imagem existente baseado em um prompt.
-    
-    Args:
-        prompt: Texto descritivo da edição desejada
-        image: Arquivo de imagem a ser editado
-        strength: Força da edição (0.0 a 1.0). Valores mais altos = mais mudanças
-    
-    Returns:
-        Imagem PNG editada
-    """
-    try:
-        print(f"Editando imagem com prompt: {prompt}")
-        
-        # Ler e processar imagem de entrada
-        image_bytes = await image.read()
-        input_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        
-        # Redimensionar se necessário (Stable Diffusion espera múltiplos de 8)
-        width, height = input_image.size
-        width = (width // 8) * 8
-        height = (height // 8) * 8
-        input_image = input_image.resize((width, height))
-        
-        # Gerar imagem editada
-        result_image = img2img_pipeline(
-            prompt=prompt,
-            image=input_image,
-            strength=strength,
-            num_inference_steps=50,
-            guidance_scale=7.5
-        ).images[0]
-        
-        # Converter para PNG em bytes
-        img_byte_arr = io.BytesIO()
-        result_image.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        
-        return Response(
-            content=img_byte_arr.getvalue(),
-            media_type="image/png"
-        )
-    except Exception as e:
-        return {"error": str(e)}
+
+@app.post("/generate", dependencies=[Depends(get_api_key)])
+
+async def generate_image(prompt: str = Form(...)):
+
+    image = pipe_txt(prompt).images[0]
+
+    img_byte_arr = BytesIO()
+
+    image.save(img_byte_arr, format='PNG')
+
+    return Response(content=img_byte_arr.getvalue(), media_type="image/png")
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+@app.post("/edit", dependencies=[Depends(get_api_key)])
+
+async def edit_image(prompt: str = Form(...), file: UploadFile = File(...), strength: float = Form(0.75)):
+
+    input_image = Image.open(BytesIO(await file.read())).convert("RGB")
+
+    input_image = input_image.resize((512, 512))
+
+    image = pipe_img(prompt=prompt, image=input_image, strength=strength).images[0]
+
+    img_byte_arr = BytesIO()
+
+    image.save(img_byte_arr, format='PNG')
+
+    return Response(content=img_byte_arr.getvalue(), media_type="image/png")
 

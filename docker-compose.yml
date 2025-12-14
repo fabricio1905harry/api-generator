@@ -14,6 +14,7 @@ services:
               capabilities: [gpu]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
+      - API_KEY=${API_KEY:-your-secret-api-key-here}
     volumes:
       - ./models_cache:/root/.cache/huggingface
 

@@ -1,0 +1,15 @@
+version: '3.8'
+
+# Versão para CPU (sem GPU)
+# Use: docker-compose -f docker-compose.cpu.yml up -d
+
+services:
+  stable-diffusion-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - CUDA_VISIBLE_DEVICES=""
+    volumes:
+      - ./models_cache:/root/.cache/huggingface
+
