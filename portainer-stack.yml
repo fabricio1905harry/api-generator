@@ -2,7 +2,10 @@ version: '3.8'
 
 services:
   stable-diffusion-api:
-    build: .
+    image: stable-diffusion-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     deploy:
@@ -14,10 +17,11 @@ services:
               capabilities: [gpu]
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - API_KEY=${API_KEY:-your-secret-api-key-here}
-    env_file:
-      - .env
+      - API_KEY=${API_KEY}
     volumes:
-      - ./models_cache:/root/.cache/huggingface
+      - models_cache:/root/.cache/huggingface
     restart: unless-stopped
+
+volumes:
+  models_cache:
 

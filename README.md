@@ -37,6 +37,17 @@ git push -u origin main
 git remote add origin https://seu-token@github.com/seu-usuario/nome-do-repo.git
 ```
 
+## 🐳 Deploy no Portainer
+
+Para fazer deploy usando Portainer, consulte o guia completo em **[DEPLOY_PORTAINER.md](DEPLOY_PORTAINER.md)**
+
+**Resumo rápido:**
+1. Acesse o Portainer
+2. Vá em "Stacks" → "Add stack"
+3. Use o arquivo `portainer-stack.yml` (com GPU) ou `portainer-stack-cpu.yml` (sem GPU)
+4. Configure a variável de ambiente `API_KEY`
+5. Deploy!
+
 ## 🖥️ Deploy na VPS
 
 ### Pré-requisitos na VPS
@@ -84,7 +95,13 @@ git clone https://github.com/fabricio1905harry/api-generator.git
 cd api-generator
 ```
 
-2. **Inicie o serviço:**
+2. **Configure a API Key:**
+```bash
+# Crie um arquivo .env ou exporte a variável
+export API_KEY="sua-chave-secreta-aqui"
+```
+
+3. **Inicie o serviço:**
 
 **Opção A - Com GPU (recomendado):**
 ```bash
@@ -106,13 +123,13 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
-3. **Verifique se está rodando:**
+4. **Verifique se está rodando:**
 ```bash
 docker-compose ps
 docker-compose logs -f
 ```
 
-4. **A API estará disponível em:**
+5. **A API estará disponível em:**
 - `http://SEU-IP-VPS:8000`
 - `http://SEU-IP-VPS:8000/docs` (documentação Swagger)
 
@@ -122,14 +139,16 @@ docker-compose logs -f
 
 ```bash
 # Gerar imagem
-curl -X POST "http://SEU-IP-VPS:8000/txt2img" \
+curl -X POST "http://SEU-IP-VPS:8000/generate" \
+  -H "x-api-key: sua-chave-secreta-aqui" \
   -F "prompt=a beautiful sunset over mountains" \
   -o output.png
 
 # Editar imagem
-curl -X POST "http://SEU-IP-VPS:8000/img2img" \
+curl -X POST "http://SEU-IP-VPS:8000/edit" \
+  -H "x-api-key: sua-chave-secreta-aqui" \
   -F "prompt=make it look like a painting" \
-  -F "image=@input.jpg" \
+  -F "file=@input.jpg" \
   -F "strength=0.8" \
   -o output.png
 ```
