@@ -37,155 +37,22 @@ git push -u origin main
 git remote add origin https://seu-token@github.com/seu-usuario/nome-do-repo.git
 ```
 
-## 🐳 Deploy no Portainer
+## 🌐 Configurar Domínio
 
-Para fazer deploy usando Portainer, consulte o guia completo em **[DEPLOY_PORTAINER.md](DEPLOY_PORTAINER.md)**
+Para acessar a API via domínio (ex: `https://api.seudominio.com`), consulte o guia completo em **[CONFIGURAR_DOMINIO.md](CONFIGURAR_DOMINIO.md)**
 
 **Resumo rápido:**
-1. Acesse o Portainer
-2. Vá em "Stacks" → "Add stack"
-3. Use o arquivo `portainer-stack.yml` (com GPU) ou `portainer-stack-cpu.yml` (sem GPU)
-4. Configure a variável de ambiente `API_KEY`
-5. Deploy!
-
-## 🖥️ Deploy na VPS
-
-### Pré-requisitos na VPS
-
-1. **Conecte-se à sua VPS via SSH:**
-```bash
-ssh usuario@seu-ip-vps
-```
-
-2. **Atualize o sistema:**
-```bash
-sudo apt update && sudo apt upgrade -y
-```
-
-3. **Instale Docker e Docker Compose:**
-```bash
-# Instalar Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo usermod -aG docker $USER
-
-# Instalar Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-
-# Reiniciar sessão (ou fazer logout/login)
-newgrp docker
-```
-
-4. **Se tiver GPU NVIDIA, instale nvidia-container-toolkit:**
-```bash
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | sudo tee /etc/apt/sources.list.d/nvidia-docker.list
-
-sudo apt-get update && sudo apt-get install -y nvidia-container-toolkit
-sudo systemctl restart docker
-```
-
-### Deploy do Projeto
-
-1. **Clone o repositório:**
-```bash
-git clone https://github.com/fabricio1905harry/api-generator.git
-cd api-generator
-```
-
-2. **Configure a API Key:**
-```bash
-# Crie um arquivo .env ou exporte a variável
-export API_KEY="sua-chave-secreta-aqui"
-```
-
-3. **Inicie o serviço:**
-
-**Opção A - Com GPU (recomendado):**
-```bash
-# Modo interativo (para ver logs)
-docker-compose up --build
-
-# Modo background (recomendado para produção)
-docker-compose up -d --build
-```
-
-**Opção B - Sem GPU (CPU apenas):**
-```bash
-docker-compose -f docker-compose.cpu.yml up -d --build
-```
-
-**Opção C - Script automatizado:**
-```bash
-chmod +x deploy.sh
-./deploy.sh
-```
-
-4. **Verifique se está rodando:**
-```bash
-docker-compose ps
-docker-compose logs -f
-```
-
-5. **A API estará disponível em:**
-- `http://SEU-IP-VPS:8000`
-- `http://SEU-IP-VPS:8000/docs` (documentação Swagger)
-
-### Consumir a API da VPS
-
-**De qualquer lugar, use o IP da sua VPS:**
-
-```bash
-# Gerar imagem
-curl -X POST "http://SEU-IP-VPS:8000/generate" \
-  -H "x-api-key: sua-chave-secreta-aqui" \
-  -F "prompt=a beautiful sunset over mountains" \
-  -o output.png
-
-# Editar imagem
-curl -X POST "http://SEU-IP-VPS:8000/edit" \
-  -H "x-api-key: sua-chave-secreta-aqui" \
-  -F "prompt=make it look like a painting" \
-  -F "file=@input.jpg" \
-  -F "strength=0.8" \
-  -o output.png
-```
-
-### Gerenciar o Serviço
-
-```bash
-# Parar o serviço
-docker-compose down
-
-# Parar e remover volumes (limpa cache de modelos)
-docker-compose down -v
-
-# Ver logs
-docker-compose logs -f
-
-# Reiniciar
-docker-compose restart
-
-# Atualizar código (após git pull)
-docker-compose up -d --build
-```
-
-### Configurar Firewall (se necessário)
-
-```bash
-# Permitir porta 8000
-sudo ufw allow 8000/tcp
-sudo ufw reload
-```
+1. Configure DNS apontando para o IP da VPS
+2. Use `docker-compose-with-nginx.yml` (com Nginx como proxy reverso)
+3. Edite `nginx.conf` com seu domínio
+4. Deploy: `docker-compose -f docker-compose-with-nginx.yml up -d --build`
 
 ## Requisitos
 
 - Docker e Docker Compose
-- NVIDIA GPU com drivers e nvidia-container-toolkit instalados (opcional, funciona com CPU também)
+- NVIDIA GPU com drivers e nvidia-container-toolkit instalados (opcional, funciona com CPU)
 
-## Instalação Local
+## Instalação
 
 1. Instale o nvidia-container-toolkit (se ainda não tiver):
 ```bash
@@ -198,31 +65,6 @@ sudo systemctl restart docker
 ```
 
 ## Uso
-
-### Configurar API Key
-
-Antes de iniciar o serviço, configure a variável de ambiente `API_KEY`:
-
-**No Linux/Mac:**
-```bash
-export API_KEY="sua-chave-secreta-aqui"
-```
-
-**No Windows (PowerShell):**
-```powershell
-$env:API_KEY="sua-chave-secreta-aqui"
-```
-
-**Ou crie um arquivo `.env` na raiz do projeto:**
-```
-API_KEY=sua-chave-secreta-aqui
-```
-
-E atualize o `docker-compose.yml` para usar o arquivo `.env`:
-```yaml
-env_file:
-  - .env
-```
 
 ### Iniciar o serviço
 
@@ -238,52 +80,34 @@ Acesse `http://localhost:8000/docs` para ver a documentação Swagger da API.
 
 ## Endpoints
 
-### GET /
-
-Verifica o status da API (não requer autenticação).
-
-**Resposta:**
-```json
-{
-  "status": "online",
-  "auth": "enabled"
-}
-```
-
-### POST /generate
+### POST /txt2img
 
 Gera uma imagem a partir de um prompt de texto.
-
-**Autenticação:** Requer header `x-api-key` com a chave configurada
 
 **Parâmetros:**
 - `prompt` (form-data): Texto descritivo da imagem
 
 **Exemplo:**
 ```bash
-curl -X POST "http://localhost:8000/generate" \
-  -H "x-api-key: sua-chave-secreta-aqui" \
+curl -X POST "http://localhost:8000/txt2img" \
   -F "prompt=a beautiful sunset over mountains" \
   -o output.png
 ```
 
-### POST /edit
+### POST /img2img
 
 Edita uma imagem existente baseado em um prompt.
 
-**Autenticação:** Requer header `x-api-key` com a chave configurada
-
 **Parâmetros:**
 - `prompt` (form-data): Texto descritivo da edição
-- `file` (file): Arquivo de imagem a ser editado
+- `image` (file): Arquivo de imagem a ser editado
 - `strength` (form-data, opcional): Força da edição (0.0 a 1.0, padrão: 0.75)
 
 **Exemplo:**
 ```bash
-curl -X POST "http://localhost:8000/edit" \
-  -H "x-api-key: sua-chave-secreta-aqui" \
+curl -X POST "http://localhost:8000/img2img" \
   -F "prompt=make it look like a painting" \
-  -F "file=@input.jpg" \
+  -F "image=@input.jpg" \
   -F "strength=0.8" \
   -o output.png
 ```
@@ -292,7 +116,5 @@ curl -X POST "http://localhost:8000/edit" \
 
 - O primeiro uso pode demorar alguns minutos para baixar o modelo (~4GB)
 - Os modelos são armazenados em cache no volume `./models_cache`
-- Para usar CPU (sem GPU), use `docker-compose.cpu.yml` ou remova a seção `deploy` do docker-compose.yml
-- A geração de imagens é mais rápida com GPU, mas funciona com CPU (mais lento)
-- Certifique-se de ter pelo menos 8GB de RAM disponível
+- Para usar CPU (sem GPU), remova a seção `deploy` do docker-compose.yml
 

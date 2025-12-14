@@ -90,7 +90,7 @@ def health_check():
 
 
 
-@app.post("/generate", dependencies=[Depends(get_api_key)])
+@app.post("/txt2img", dependencies=[Depends(get_api_key)])
 
 async def generate_image(prompt: str = Form(...)):
 
@@ -104,19 +104,19 @@ async def generate_image(prompt: str = Form(...)):
 
 
 
-@app.post("/edit", dependencies=[Depends(get_api_key)])
+@app.post("/img2img", dependencies=[Depends(get_api_key)])
 
-async def edit_image(prompt: str = Form(...), file: UploadFile = File(...), strength: float = Form(0.75)):
+async def edit_image(prompt: str = Form(...), image: UploadFile = File(...), strength: float = Form(0.75)):
 
-    input_image = Image.open(BytesIO(await file.read())).convert("RGB")
+    input_image = Image.open(BytesIO(await image.read())).convert("RGB")
 
     input_image = input_image.resize((512, 512))
 
-    image = pipe_img(prompt=prompt, image=input_image, strength=strength).images[0]
+    result_image = pipe_img(prompt=prompt, image=input_image, strength=strength).images[0]
 
     img_byte_arr = BytesIO()
 
-    image.save(img_byte_arr, format='PNG')
+    result_image.save(img_byte_arr, format='PNG')
 
     return Response(content=img_byte_arr.getvalue(), media_type="image/png")
 
